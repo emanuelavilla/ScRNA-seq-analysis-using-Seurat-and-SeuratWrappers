@@ -1,0 +1,45 @@
+library(DoubletFinder)
+library(Seurat)
+library(tidyverse)
+library(ggplot2)
+
+
+## pK Identification (no ground-truth)
+sweep.res.list_seu <- paramSweep_v3(seu_filtered, PCs = 1:20, sct = FALSE) #introduce artificial doublets
+sweep.stats_seu <- summarizeSweep(sweep.res.list_seu, GT = FALSE) #summarise the results of paramSweep
+bcmvn_seu <- find.pK(sweep.stats_seu) #compute a metrics to find the optimal pk value
+
+ggplot(bcmvn_seu, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+
+pK <- bcmvn_seu %>% # select the pK that corresponds to max bcmvn to optimize doublet detection
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK) 
+pK <- as.numeric(as.character(pK[[1]]))
+
+
+## Homotypic Doublet Proportion Estimate
+annotations <- seu_filtered@meta.data$RNA_snn_res.0.8
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+dim(seu)
+nExp_poi <- round(0.016*nrow(seu_filtered@meta.data))  ## Assuming 1.6% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+
+# run doubletFinder 
+seu_filtered <- doubletFinder_v3(seu_filtered, 
+                                    PCs = 1:20, 
+                                    pN = 0.25, 
+                                    pK = pK, 
+                                    nExp = nExp_poi.adj,
+                                    reuse.pANN = FALSE, sct = FALSE)
+
+head(seu_filtered@meta.data)
+
+# visualize doublets
+DimPlot(seu_filtered, reduction = 'umap', group.by = "DF.classifications_0.25_0.23_30", cols = c('red','black')) + NoLegend() +
+  ggtitle('Doublets in seu') + 
+  theme(plot.title = element_text(size = 40, face = "bold", hjust = 0.5))
+
+#RUN AGAIN THE STANDARD PREPROCESSING SEURAT

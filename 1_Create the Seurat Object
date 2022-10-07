@@ -1,0 +1,15 @@
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(scales)
+library(ggplot2)
+library(stringr)
+
+# Load the dataset
+seu_data <- Read10X(data.dir = "../filtered_gene_bc_matrices/hg19/")
+
+# Initialize the Seurat object with the raw (non-normalized data).
+seu <- CreateSeuratObject(counts = seu.data, project = "Proj_name",
+                            min.cells = 3, min.features = 200,
+                            meta.data = seu.metadata)
+seu

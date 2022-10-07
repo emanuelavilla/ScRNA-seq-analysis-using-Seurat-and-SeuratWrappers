@@ -1,0 +1,33 @@
+library(dplyr)
+library(Seurat)
+library(patchwork)
+
+#Normalisation
+seu_filtered <- NormalizeData(seu_filtered,
+                                normalization.method = "LogNormalize",
+                                    scale.factor = 10000)
+
+seu_filtered <- FindVariableFeatures(seu_filtered,
+                                    selection.method = "vst", nfeatures = 2000)
+
+#scale data
+all_genes <- rownames(seu_filtered)
+seu_filtered <- ScaleData(seu_filtered, features = all_genes)
+
+#Run PCA
+seu_filtered <- RunPCA(object = seu_filtered,
+                        features = VariableFeatures(object = seu_filtered))
+
+#Find neighbor
+seu_filtered <- FindNeighbors(object = seu_filtered)
+
+#Find clusters
+seu_filtered <- FindClusters(object = seu_filtered)
+
+#Run UMAP
+seu_filtered <- RunUMAP(object = seu_filtered, dims = 1:20)
+
+#Visualisation
+DimPlot(Dseu_filtered, label = TRUE, label.size = 10) + NoLegend() +
+  ggtitle("seu filtered with miQC") +
+  theme(plot.title = element_text(size = 40, face = "bold", hjust = 0.5))

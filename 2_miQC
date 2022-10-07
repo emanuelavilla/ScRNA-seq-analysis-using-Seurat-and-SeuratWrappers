@@ -1,0 +1,36 @@
+library(lattice)
+library(flexmix)
+library(SeuratWrappers)
+
+#select the Idents for the object
+Idents(seu) <- seu$ident
+
+# The [[ operator can add columns to object metadata.
+#This is a great place to stash QC stats
+seu[["percent.mt"]] <- PercentageFeatureSet(seu, pattern = "^mt-")
+
+# Visualize QC metrics as a violin plot
+VlnPlot(seu, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"),
+        ncol = 3, group.by = "ident")
+
+#visualise the percentage of mitochondrial genes and number of genes per cell
+FeatureScatter(seu, feature1 = "nFeature_RNA", feature2 = "percent.mt")
+
+#run miQC
+seu <- RunMiQC(seu, percent.mt = "percent.mt", nFeature_RNA = "nFeature_RNA",
+                posterior.cutoff = 0.75, model.slot = "flexmix_model")
+
+flexmix::parameters(Misc(seu, "flexmix_model"))
+head(flexmix::posterior(Misc(seu, "flexmix_model")))
+
+#visualise the model results
+PlotMiQC(seu, color.by = "miQC.probability") +
+    ggplot2::scale_color_gradient(low = "grey", high = "purple")
+
+PlotMiQC(seu, color.by = "miQC.keep")
+
+#visualise the table of cells to keep and those to discard
+table(seu$miQC.keep)
+
+seu_filtered <- subset(seu, miQC.keep == "keep")
+seu_filtered
